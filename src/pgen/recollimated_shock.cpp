@@ -41,7 +41,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   power_iso = pin->GetReal("problem","power_iso");//wind power in erg/s
   v_iso = pin->GetReal("problem", "v_iso");//speed of wind in km/s
   theta=pin->GetReal("problem","theta");//half opening angle in degree
-
+  EnrollUserExplicitSourceFunction(Source);
   return;
 }
 
@@ -50,6 +50,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   d_amb=rho_amb/1.4;//mass density of ISM in ism units(1.4m_H/cm^3).
   p_amb=rho_amb*k_boltzmann_cgs*T_amb/code_energydensity_cgs;
   bz_amb_ism=bz_amb/code_magneticfield_cgs;
+  bz_jet_ism=bz_jet/code_magneticfield_cgs;
   
 
   // initialize conserved variables
@@ -118,16 +119,32 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
         Real z = pmb->pcoord->x3v(k);
         Real r = std::sqrt(SQR(R)+SQR(z));
         Real mu = z/r;
-        if (r < r_source && r> r_source/2.0) {
+        if (r < 1.25*r_source && r> 0.25*r_source) {
            // 比如注入动量或能量
-           power_iso_code=power_iso/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
-           M_dot=2.0*power_iso_code/SQR(v_iso);//mass lossing rate in code unit
-           d_iso=M_dot/(4*PI*r*r*v_iso);
-           cons(IDN,k,j,i)=d_iso;
-           cons(IM1,k,j,i)=d_iso*v_iso*R/r;
+
+           Real angle=std::acos(z/r);
+           Real theta_rad=theta*PI/180.0;
+           Real ftheta_rad=1.0/(1.0+std::exp(10.0*(angle-theta_rad)/theta_rad))
+             +1.0/(1.0+std::exp(10.0*(PI-angle-theta_rad)/theta_rad));
+           Real btemp=0.5*r_source;
+           Real fr=1.0/(1.0+std::exp(-40.0*(r-btemp)/btemp))
+             *1.0/(1.0+std::exp(40.0*(r-2.0*btemp)/btemp));
+           Real ftheta_rad_r=ftheta_rad*fr;
+           Real one_minus_ftheta_rad_r=1.0-ftheta_rad_r;
+           Real power_iso_code=power_iso/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
+           Real M_dot_iso=2.0*power_iso_code/SQR(v_iso);//mass lossing rate in code unit
+           Real d_iso=M_dot_iso/(4*PI*r*r*v_iso);
+           Real power_jet_code=power_jet/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
+           Real M_dot_jet=2.0*power_jet_code/SQR(v_jet);//mass lossing rate in code unit
+           Real d_jet=M_dot_jet/(2*PI*r*r*(1-std::cos(theta_rad))*v_jet);
+           cons(IDN,k,j,i)=d_jet*ftheta_rad_r+d_iso*one_minus_ftheta_rad_r;
+           cons(IM1,k,j,i)=d_jet*v_jet*R/r*ftheta_rad_r+d_iso*v_iso*R/r*one_minus_ftheta_rad_r;
            cons(IM2,k,j,i)=0.0;
-           cons(IM3,k,j,i)=d_iso*v_iso*z/r;
-           cons(IEN,k,j,i)=0.5*d_iso*v_iso*v_iso;
+           cons(IM3,k,j,i)=d_jet*v_jet*z/r*ftheta_rad_r+d_iso*v_iso*z/r*one_minus_ftheta_rad_r;
+           cons(IEN,k,j,i)=0.5*d_jet*v_jet*v_jet*ftheta_rad_r+0.5*d_iso*v_iso*v_iso*one_minus_ftheta_rad_r;
+           bcc(IB1,k,j,i)=0.0;
+           bcc(IB2,k,j,i)=0.0;
+           bcc(IB3,k,j,i)=bz_jet_ism*ftheta_rad_r+bz_amb_ism*one_minus_ftheta_rad_r;
         }
       }
     }
