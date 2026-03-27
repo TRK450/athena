@@ -131,10 +131,10 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
              *1.0/(1.0+std::exp(40.0*(r-2.0*btemp)/btemp));
            Real ftheta_rad_r=ftheta_rad*fr;
            Real one_minus_ftheta_rad_r=1.0-ftheta_rad_r;
-           Real power_iso_code=power_iso/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
+           Real power_iso_code=power_iso*code_time_cgs/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
            Real M_dot_iso=2.0*power_iso_code/SQR(v_iso);//mass lossing rate in code unit
            Real d_iso=M_dot_iso/(4*PI*r*r*v_iso);
-           Real power_jet_code=power_jet/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
+           Real power_jet_code=power_jet*code_time_cgs/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
            Real M_dot_jet=2.0*power_jet_code/SQR(v_jet);//mass lossing rate in code unit
            Real d_jet=M_dot_jet/(2*PI*r*r*(1-std::cos(theta_rad))*v_jet);
            cons(IDN,k,j,i)=d_jet*ftheta_rad_r+d_iso*one_minus_ftheta_rad_r;
