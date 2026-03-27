@@ -20,6 +20,11 @@ Real theta;
 Real gm1;
 } // namespace
 
+void Source(MeshBlock *pmb, const Real time, const Real dt,
+              const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
+              const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
+              AthenaArray<Real> &cons_scalar);
+
 void Mesh::InitUserMeshData(ParameterInput *pin) {
   // initialize global variables
   rho_amb  = pin->GetReal("problem", "rho_amb");//number density of ISM in 1/cm^3
@@ -27,13 +32,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (MAGNETIC_FIELDS_ENABLED) {
     bz_amb = pin->GetReal("problem", "bz_amb");//magnet field in Gauss in ISM and wind
   }
-  power_jet  = pin->GetReal("problem", "power_jet");//log10 of jet power in erg/s
+  power_jet  = pin->GetReal("problem", "power_jet");//jet power in erg/s
   v_jet = pin->GetReal("problem", "v_jet");//speed of jet in km/s
   if (MAGNETIC_FIELDS_ENABLED) {
     bz_jet = pin->GetReal("problem", "bz_jet");//magnetic field in Gauss at jet base
   }
   r_source = pin->GetReal("problem", "r_source");//radius of source in pc
-  power_iso = pin->GetReal("problem","power_iso");//log10 of wind power in erg/s
+  power_iso = pin->GetReal("problem","power_iso");//wind power in erg/s
+  v_iso = pin->GetReal("problem", "v_iso");//speed of wind in km/s
   theta=pin->GetReal("problem","theta");//half opening angle in degree
 
   return;
@@ -98,3 +104,33 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   return;
 }
 
+void Source(MeshBlock *pmb, const Real time, const Real dt,
+              const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
+              const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
+              AthenaArray<Real> &cons_scalar){
+  //Real g = pmb->peos->GetGamma();
+  //Real temp_goal = 10.0;
+  //Real tau = 0.01;
+  for (int k = pmb->ks; k <= pmb->ke; ++k) {
+    for (int j = pmb->js; j <= pmb->je; ++j) {
+      for (int i = pmb->is; i <= pmb->ie; ++i) {
+        Real R = pmb->pcoord->x1v(i);
+        Real z = pmb->pcoord->x3v(k);
+        Real r = std::sqrt(SQR(R)+SQR(z));
+        Real mu = z/r;
+        if (r < r_source && r> r_source/2.0) {
+           // 比如注入动量或能量
+           power_iso_code=power_iso/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
+           M_dot=2.0*power_iso_code/SQR(v_iso);//mass lossing rate in code unit
+           d_iso=M_dot/(4*PI*r*r*v_iso);
+           cons(IDN,k,j,i)=d_iso;
+           cons(IM1,k,j,i)=d_iso*v_iso*R/r;
+           cons(IM2,k,j,i)=0.0;
+           cons(IM3,k,j,i)=d_iso*v_iso*z/r;
+           cons(IEN,k,j,i)=0.5*d_iso*v_iso*v_iso;
+        }
+      }
+    }
+  }
+  return;
+}
