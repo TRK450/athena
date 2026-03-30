@@ -154,8 +154,8 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        Real R = pmb->pcoord->x1v(i);
-        Real z = pmb->pcoord->x3v(k);
+        Real R = pmb->pcoord->x1f(i);
+        Real z = pmb->pcoord->x3f(k);
         Real r = std::sqrt(SQR(R)+SQR(z));
         Real mu = z/r;
         if (r < 1.0*r_source && r> 0.25*r_source) {
