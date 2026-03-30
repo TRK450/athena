@@ -182,7 +182,7 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
            Real p1_target=d_jet*v_jet*R/r*ftheta_rad+d_iso*v_iso*R/r*(1-ftheta_rad);
            Real p2_target=0.0;
            Real p3_target=d_jet*v_jet*z/r*ftheta_rad+d_iso*v_iso*z/r*(1-ftheta_rad);
-           Real energy_target=0.5*d_jet*v_jet*v_jet*ftheta_rad+0.5*d_iso*v_iso*v_iso*(1-ftheta_rad)
+           Real energy_target=0.5*(p1_target*p1_target+p2_target*p2_target+p3_target*p3_target)/dens_target
              +0.5*(bcc(IB1,k,j,i)*bcc(IB1,k,j,i)+bcc(IB2,k,j,i)*bcc(IB2,k,j,i)+bcc(IB3,k,j,i)*bcc(IB3,k,j,i))
              +p_amb/(g-1.0);
 
