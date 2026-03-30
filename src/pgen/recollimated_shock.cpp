@@ -91,6 +91,26 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         }
       }
     }
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real R = pmb->pcoord->x1v(i);
+          Real z = pmb->pcoord->x3v(k);
+          Real r = std::sqrt(SQR(R)+SQR(z));
+          Real mu = z/r;
+          if (r < 1.0*r_source && r> 0.25*r_source) {
+            Real angle=std::acos(z/r);
+            Real theta_rad=theta*PI/180.0;
+            Real ftheta_rad=1.0/(1.0+std::exp(10.0*(angle-theta_rad)/theta_rad))
+             +1.0/(1.0+std::exp(10.0*(PI-angle-theta_rad)/theta_rad));
+            Real btemp=0.45*r_source;
+            Real fr=1.0/(1.0+std::exp(-40.0*(r-btemp)/btemp))
+             *1.0/(1.0+std::exp(40.0*(r-2.0*btemp)/btemp));
+            pfield->b.x3f(k,j,i) += bz_jet_ism*ftheta_rad*fr;
+          }
+        }
+      }
+    }
     if (NON_BAROTROPIC_EOS) {
       for (int k=ks; k<=ke; ++k) {
         for (int j=js; j<=je; ++j) {
@@ -119,32 +139,40 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
         Real z = pmb->pcoord->x3v(k);
         Real r = std::sqrt(SQR(R)+SQR(z));
         Real mu = z/r;
-        if (r < 1.25*r_source && r> 0.25*r_source) {
-           // 比如注入动量或能量
-
+        if (r < 1.0*r_source && r> 0.25*r_source) {
            Real angle=std::acos(z/r);
            Real theta_rad=theta*PI/180.0;
            Real ftheta_rad=1.0/(1.0+std::exp(10.0*(angle-theta_rad)/theta_rad))
              +1.0/(1.0+std::exp(10.0*(PI-angle-theta_rad)/theta_rad));
-           Real btemp=0.5*r_source;
+           Real btemp=0.45*r_source;
            Real fr=1.0/(1.0+std::exp(-40.0*(r-btemp)/btemp))
              *1.0/(1.0+std::exp(40.0*(r-2.0*btemp)/btemp));
-           Real ftheta_rad_r=ftheta_rad*fr;
-           Real one_minus_ftheta_rad_r=1.0-ftheta_rad_r;
+           
            Real power_iso_code=power_iso*code_time_cgs/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
            Real M_dot_iso=2.0*power_iso_code/SQR(v_iso);//mass lossing rate in code unit
            Real d_iso=M_dot_iso/(4*PI*r*r*v_iso);
            Real power_jet_code=power_jet*code_time_cgs/(code_mass_cgs*code_velocity_cgs*code_velocity_cgs);
            Real M_dot_jet=2.0*power_jet_code/SQR(v_jet);//mass lossing rate in code unit
            Real d_jet=M_dot_jet/(2*PI*r*r*(1-std::cos(theta_rad))*v_jet);
-           cons(IDN,k,j,i)=d_jet*ftheta_rad_r+d_iso*one_minus_ftheta_rad_r;
-           cons(IM1,k,j,i)=d_jet*v_jet*R/r*ftheta_rad_r+d_iso*v_iso*R/r*one_minus_ftheta_rad_r;
-           cons(IM2,k,j,i)=0.0;
-           cons(IM3,k,j,i)=d_jet*v_jet*z/r*ftheta_rad_r+d_iso*v_iso*z/r*one_minus_ftheta_rad_r;
-           cons(IEN,k,j,i)=0.5*d_jet*v_jet*v_jet*ftheta_rad_r+0.5*d_iso*v_iso*v_iso*one_minus_ftheta_rad_r;
-           bcc(IB1,k,j,i)=0.0;
-           bcc(IB2,k,j,i)=0.0;
-           bcc(IB3,k,j,i)=bz_jet_ism*ftheta_rad_r+bz_amb_ism*one_minus_ftheta_rad_r;
+
+           dens_current=cons(IDN,k,j,i);
+           p1_current=cons(IM1,k,j,i);
+           p2_current=cons(IM1,k,j,i);
+           p3_current=cons(IM1,k,j,i);
+           energy_current=cons(IEN,k,j,i);
+
+           dens_target=d_jet*ftheta_rad+d_iso*(1-ftheta_rad);
+           p1_target=d_jet*v_jet*R/r*ftheta_rad+d_iso*v_iso*R/r*(1-ftheta_rad);
+           p2_target=0.0;
+           p3_target=d_jet*v_jet*z/r*ftheta_rad+d_iso*v_iso*z/r*(1-ftheta_rad);
+           energy_target=0.5*d_jet*v_jet*v_jet*ftheta_rad+0.5*d_iso*v_iso*v_iso*(1-ftheta_rad)
+             +0.5*(bcc(IB1,k,j,i)*bcc(IB1,k,j,i)+bcc(IB2,k,j,i)*bcc(IB2,k,j,i)+bcc(IB3,k,j,i)*bcc(IB3,k,j,i));
+
+           cons(IDN,k,j,i)=dens_target*fr+dens_target*(1-fr);
+           cons(IM1,k,j,i)=p1_target*fr+p1_target*(1-fr);
+           cons(IM2,k,j,i)=p2_target*fr+p2_target*(1-fr);
+           cons(IM3,k,j,i)=p3_target*fr+p3_target*(1-fr);
+           cons(IEN,k,j,i)=energy_target*fr+energy_target*(1-fr);
         }
       }
     }
