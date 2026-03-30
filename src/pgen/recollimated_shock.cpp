@@ -91,7 +91,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         }
       }
     }
-    for (int k = ks; k <= ke; ++k) {
+    for (int k = ks; k <= ke+1; ++k) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real R = pmb->pcoord->x1v(i);
@@ -129,7 +129,7 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
               const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
               const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
               AthenaArray<Real> &cons_scalar){
-  //Real g = pmb->peos->GetGamma();
+  Real g = pmb->peos->GetGamma();
   //Real temp_goal = 10.0;
   //Real tau = 0.01;
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
@@ -157,8 +157,8 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
 
            dens_current=cons(IDN,k,j,i);
            p1_current=cons(IM1,k,j,i);
-           p2_current=cons(IM1,k,j,i);
-           p3_current=cons(IM1,k,j,i);
+           p2_current=cons(IM2,k,j,i);
+           p3_current=cons(IM3,k,j,i);
            energy_current=cons(IEN,k,j,i);
 
            dens_target=d_jet*ftheta_rad+d_iso*(1-ftheta_rad);
@@ -166,13 +166,14 @@ void Source(MeshBlock *pmb, const Real time, const Real dt,
            p2_target=0.0;
            p3_target=d_jet*v_jet*z/r*ftheta_rad+d_iso*v_iso*z/r*(1-ftheta_rad);
            energy_target=0.5*d_jet*v_jet*v_jet*ftheta_rad+0.5*d_iso*v_iso*v_iso*(1-ftheta_rad)
-             +0.5*(bcc(IB1,k,j,i)*bcc(IB1,k,j,i)+bcc(IB2,k,j,i)*bcc(IB2,k,j,i)+bcc(IB3,k,j,i)*bcc(IB3,k,j,i));
+             +0.5*(bcc(IB1,k,j,i)*bcc(IB1,k,j,i)+bcc(IB2,k,j,i)*bcc(IB2,k,j,i)+bcc(IB3,k,j,i)*bcc(IB3,k,j,i))
+             +p_amb/(g-1.0);
 
-           cons(IDN,k,j,i)=dens_target*fr+dens_target*(1-fr);
-           cons(IM1,k,j,i)=p1_target*fr+p1_target*(1-fr);
-           cons(IM2,k,j,i)=p2_target*fr+p2_target*(1-fr);
-           cons(IM3,k,j,i)=p3_target*fr+p3_target*(1-fr);
-           cons(IEN,k,j,i)=energy_target*fr+energy_target*(1-fr);
+           cons(IDN,k,j,i)=dens_target*fr+dens_current*(1-fr);
+           cons(IM1,k,j,i)=p1_target*fr+p1_current*(1-fr);
+           cons(IM2,k,j,i)=p2_target*fr+p2_current*(1-fr);
+           cons(IM3,k,j,i)=p3_target*fr+p3_current*(1-fr);
+           cons(IEN,k,j,i)=energy_target*fr+energy_current*(1-fr);
         }
       }
     }
