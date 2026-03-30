@@ -113,8 +113,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke+1; ++k) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
-          Real R = pcoord->x1v(i);
-          Real z = pcoord->x3v(k);
+          Real R = pcoord->x1f(i);
+          Real z = pcoord->x3f(k);
           Real r = std::sqrt(SQR(R)+SQR(z));
           Real mu = z/r;
           if (r < 1.0*r_source && r> 0.25*r_source) {
